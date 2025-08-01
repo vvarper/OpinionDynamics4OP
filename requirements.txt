@@ -1,0 +1,9 @@
+networkx~=3.3
+matplotlib~=3.9.2
+numpy~=1.26.4
+pandas~=2.2.3
+seaborn~=0.13.2
+scikit-learn~=1.5.1
+mesa~=2.4.0
+tqdm~=4.66.5
+scipy~=1.13.1
