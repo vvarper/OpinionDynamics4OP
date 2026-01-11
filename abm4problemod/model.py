@@ -31,8 +31,9 @@ def get_random_opinion(model):
 
 class BaseODModel(mesa.Model):
     def __init__(self, num_agents, initial_op, simulation_steps, seed,
-                 concern_threshold, edge_list, collector_mode='concern',
-                 evolution_params=None):
+                 edge_list, concern_threshold=0.9,
+                 collector_statistic='concern',
+                 collector_full=False, evolution_params=None):
         super().__init__()
 
         self.evolution_params = {}
@@ -46,16 +47,20 @@ class BaseODModel(mesa.Model):
         self.min_opinion = 0.0
         self.max_opinion = 1.0
         self.num_agents = num_agents
-        self.num_concerned = sum(
-            [1 for op in initial_op if op > concern_threshold])
-
-        if collector_mode in ('opinions', 'avg_opinions'):
-            self.sum_opinions = sum(initial_op)
-            self.sum_opinions_sq = sum([op ** 2 for op in initial_op])
 
         self.simulation_steps = simulation_steps
         self.concern_threshold = concern_threshold
-        self.collector_mode = collector_mode
+        self.collector_full = collector_full
+        self.collector_statistic = collector_statistic
+
+        if collector_statistic == 'concern':
+            self.num_concerned = sum(
+                [1 for op in initial_op if op > concern_threshold])
+        elif collector_statistic == 'avg_opinions':
+            self.sum_opinions = sum(initial_op)
+        elif collector_statistic == 'avgstd_opinions':
+            self.sum_opinions = sum(initial_op)
+            self.sum_opinions_sq = sum([op ** 2 for op in initial_op])
 
         self.graph = nx.Graph()
         self.graph.add_nodes_from(range(num_agents))
@@ -69,26 +74,28 @@ class BaseODModel(mesa.Model):
         self.running = True
 
     def _set_reporters(self):
-        model_reporters = {"Concern": compute_concern}
 
-        # At each step, report the state of a random agent
-        if self.collector_mode != 'concern':
-            # Random generator who not change the model state
-            generator = np.random.default_rng(self.seed)
-            self.random_agents_report = generator.choice(
-                self.num_agents,
-                self.simulation_steps + 2)
-            model_reporters["Opinion"] = get_random_opinion
+        model_reporters = {}
 
-        if self.collector_mode in ('avg_opinions', 'opinions'):
+        if self.collector_statistic == 'concern':
+            model_reporters["Concern"] = compute_concern
+        elif self.collector_statistic == 'avg_opinions':
+            model_reporters["AvgOpinion"] = compute_avg_opinion
+        elif self.collector_statistic == 'avgstd_opinions':
             model_reporters["AvgOpinion"] = compute_avg_opinion
             model_reporters["StdOpinion"] = compute_std_opinion
 
-        # Save in a JSON file the opinions of all agents in 100 equally spaced steps
-        if self.collector_mode == 'opinions':
-            self.agents_results_file = (
-                f"outputs/{self._get_config_name()}"
-                f"/agent_opinions_{self.seed}.json")
+        # At each step, report the state of a random agent
+        if self.collector_full:
+            # Random generator who not change the model state
+            generator = np.random.default_rng(self.seed)
+            self.random_agents_report = generator.choice(self.num_agents,
+                                                         self.simulation_steps + 2)
+            model_reporters["Opinion"] = get_random_opinion
+
+            # Save in a JSON file the opinions of all agents in 100 equally spaced steps
+            self.agents_results_file = (f"outputs/{self._get_config_name()}"
+                                        f"/agent_opinions_{self.seed}.json")
             jump = (self.simulation_steps + 1) // 100
             self.agent_reporter_period = jump if jump > 0 else 1
 
@@ -102,13 +109,12 @@ class BaseODModel(mesa.Model):
             model_reporters=model_reporters)
 
     def _get_config_name(self):
-        return (f"{self.__class__.__name__}_{self.concern_threshold:.2}")
+        return (
+            f"{self.__class__.__name__}_{self.concern_threshold:.2}_{self.num_agents}")
 
     def __store_agents_opinions(self):
-        data = {
-            'Step': self._steps,
-            'Opinions': [a.opinion for a in self.schedule.agents]
-        }
+        data = {'Step': self._steps,
+                'Opinions': [a.opinion for a in self.schedule.agents]}
 
         json_data = json.dumps(data)
 
@@ -141,7 +147,7 @@ class BaseODModel(mesa.Model):
         self.collect_data()
 
     def collect_data(self):
-        if self.collector_mode == 'opinions' and (
+        if self.collector_full and (
                 self._steps % self.agent_reporter_period == 0 or not self.running):
             self.__store_agents_opinions()
 
@@ -154,15 +160,13 @@ class BaseODModel(mesa.Model):
 
 class FJModel(BaseODModel):
     def __init__(self, num_agents, initial_op, edge_list, simulation_steps,
-                 seed, susceptibility, concern_threshold=0.7,
-                 collector_mode='concern'):
-        evolution_params = {
-            'susceptibility': susceptibility
-        }
+                 seed, susceptibility, concern_threshold=0.9,
+                 collector_statistic='concern', collector_full=False):
+        evolution_params = {'susceptibility': susceptibility}
 
         super().__init__(num_agents, initial_op, simulation_steps, seed,
-                         concern_threshold, edge_list,
-                         collector_mode, evolution_params)
+                         edge_list, concern_threshold, collector_statistic,
+                         collector_full, evolution_params)
 
         self.schedule = scheduler.NeighborsScheduler(self, initial_op,
                                                      agent.FJAgent)
@@ -177,12 +181,13 @@ class FJModel(BaseODModel):
 
 class BiasedAssimilationModel(BaseODModel):
     def __init__(self, num_agents, initial_op, edge_list, simulation_steps,
-                 seed, bias, concern_threshold=0.7, collector_mode='concern'):
+                 seed, bias, concern_threshold=0.9,
+                 collector_statistic='concern', collector_full=False):
         evolution_params = {'bias': bias}
 
         super().__init__(num_agents, initial_op, simulation_steps, seed,
-                         concern_threshold, edge_list,
-                         collector_mode, evolution_params)
+                         edge_list, concern_threshold, collector_statistic,
+                         collector_full, evolution_params)
 
         self.schedule = scheduler.NeighborsScheduler(self, initial_op,
                                                      agent.BiasedAssimilationAgent)
@@ -199,25 +204,26 @@ class ATBCRModel(BaseODModel):
     def __init__(self, num_agents, initial_op, edge_list, simulation_steps,
                  seed, threshold_bc, threshold_pol,
                  convergence=deque([(0, 0.1)]), gamma=None,
-                 concern_threshold=0.7, collector_mode='concern'):
+                 concern_threshold=0.9, collector_statistic='concern',
+                 collector_full=False):
 
-        evolution_params = {
-            'threshold_bc': threshold_bc,
-            'threshold_pol': threshold_pol,
-            'convergence': convergence,
-            'gamma': gamma if gamma is not None else deque([(0, 0.0)])
-        }
+        evolution_params = {'threshold_bc': threshold_bc,
+                            'threshold_pol': threshold_pol,
+                            'convergence': convergence,
+                            'gamma': gamma if gamma is not None else deque(
+                                [(0, 0.0)])}
 
         super().__init__(num_agents, initial_op, simulation_steps, seed,
-                         concern_threshold, edge_list,
-                         collector_mode, evolution_params)
+                         edge_list, concern_threshold, collector_statistic,
+                         collector_full, evolution_params)
 
         if gamma is None:
             self.schedule = scheduler.PairwiseRandomScheduler(self, initial_op,
                                                               agent.ATBCRAgent)
         else:
-            self.schedule = scheduler.PairwiseAlgorithmicBiasedScheduler(
-                self, initial_op, agent.ATBCRAgent)
+            self.schedule = scheduler.PairwiseAlgorithmicBiasedScheduler(self,
+                                                                         initial_op,
+                                                                         agent.ATBCRAgent)
 
         self._set_reporters()
         self.collect_data()

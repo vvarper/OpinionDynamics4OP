@@ -4,10 +4,10 @@ from functools import partial
 from multiprocessing import Pool
 from typing import Any, Optional
 
-from tqdm.auto import tqdm
-
-from mesa.model import Model
 import mesa
+import numpy as np
+from mesa.model import Model
+from tqdm.auto import tqdm
 
 from abm4problemod.statistics import SimulationStatistics
 
@@ -19,6 +19,7 @@ def mc_run(
         parameters: Mapping[str, Any],
         initial_seed: int = 0,
         mc: int = 1,
+        synth: bool = False,
         number_processes: Optional[int] = 1,
         data_collection_period: int = -1,
         display_progress: bool = True,
@@ -50,6 +51,7 @@ def mc_run(
         model_cls,
         parameters=parameters,
         data_collection_period=data_collection_period,
+        synth=synth,
     )
 
     results: list[dict[str, Any]] = []
@@ -74,6 +76,7 @@ def _model_run_func(
         seed: int,
         parameters: Mapping[str, Any],
         data_collection_period: int,
+        synth: bool
 ) -> list[dict[str, Any]]:
     """Run a single model run and collect model and agent data.
 
@@ -93,7 +96,15 @@ def _model_run_func(
     List[Dict[str, Any]]
         Return model_data, agent_data from the reporters
     """
-    model = model_cls(**parameters, seed=seed)
+    if synth:
+        initial_opinions = np.random.default_rng(
+            seed=seed).uniform(low=0.0, high=1.0,
+                               size=parameters['num_agents']).tolist()
+
+        model = model_cls(**parameters, seed=seed, initial_op=initial_opinions)
+    else:
+        model = model_cls(**parameters, seed=seed)
+
     while model.running:
         model.step()
 

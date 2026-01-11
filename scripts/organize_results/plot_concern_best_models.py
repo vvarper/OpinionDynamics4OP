@@ -46,7 +46,6 @@ def main():
                      'ba': 'L-SHADE'},
                0.75: {'bc': 'DE', 'atbcr': 'L-SHADE', 'fj': 'DE', 'ab': 'DE',
                       'ba': 'L-SHADE'
-
                       },
                0.9: {'bc': 'DE', 'atbcr': 'DE', 'fj': 'DE', 'ab': 'L-SHADE',
                      'ba': 'L-SHADE'}}
@@ -56,7 +55,7 @@ def main():
     history = load_history(f'data/{topic}/{topic}_history.csv')
 
     for concern_threshold in configs.keys():
-        xlabels = pd.read_csv('data/simulation_periods.csv')['Subperiod']
+        xlabels = pd.read_csv(f'data/{topic}/simulation_periods.csv')['Subperiod']
         plt.xticks(range(0, len(history)), xlabels, rotation=45)
         plt.plot(history, marker='.', label='History')
         plt.ylabel(f'Proportion of population concerned')
@@ -68,6 +67,7 @@ def main():
         degroot_folder_name = f'results/DeGroot/{daily_factor}_{concern_threshold}_{mc}'
         plot_concern_model(degroot_folder_name, 'DeGroot solution',
                            measure_time, palette[1])
+
 
         for j, local_od in enumerate(configs[concern_threshold]):
             algorithm = configs[concern_threshold][local_od]

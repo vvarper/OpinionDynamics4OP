@@ -46,7 +46,7 @@ def main():
     os.makedirs('results/summary_calibration_results', exist_ok=True)
     history = load_history(f'data/{topic}/{topic}_history.csv')
 
-    xlabels = pd.read_csv('data/simulation_periods.csv')['Subperiod']
+    xlabels = pd.read_csv(f'data/{topic}/simulation_periods.csv')['Subperiod']
 
     plt.figure(figsize=(12, 6))
 

@@ -14,24 +14,37 @@ class ODABMCalibrationProblem(FloatProblem):
     def __init__(self, model: abm4problemod.model.BaseODModel,
                  fixed_parameters: dict, history, measure_time: list,
                  metrics: dict, mc: int, dynamic_local: bool = False,
+                 statistic: str = 'Concern',
+                 synth: bool = False,
                  num_processes: int = 1,
                  generator: np.random.Generator = np.random.default_rng(),
-                 polarization: bool = True, algorithmic: bool = False):
+                 polarization: bool = True, algorithmic: bool = False,
+                 constrained: bool = True):
+
         super(ODABMCalibrationProblem, self).__init__()
 
         self.model = model
         self.polarization = polarization
         self.algorithmic = algorithmic
-        self.fixed_parameters = {**fixed_parameters,
-                                 'collector_mode': 'concern'}
+        self.fixed_parameters = {**fixed_parameters}
 
         self.mc = mc
+        self.synth = synth
         self.num_processes = num_processes
         self.measure_time = measure_time
         self.num_months = len(self.measure_time) - 1
 
         self.history = history
         self.metrics = metrics
+        self.statistic = statistic
+        self.constrained = constrained
+
+        if statistic == 'AvgOpinion':
+            self.fixed_parameters['collector_statistic'] = 'avg_opinions'
+        elif statistic == 'Concern':
+            self.fixed_parameters['collector_statistic'] = 'concern'
+        else:
+            raise ValueError(f'Statistic {statistic} not supported.')
 
         self.dynamic_local = dynamic_local
 
@@ -50,10 +63,16 @@ class ODABMCalibrationProblem(FloatProblem):
         else:
             self.calib_parameters = ['convergence', 'threshold_bc']
             self.lower_bound = [0.01, 0.0]
-            self.upper_bound = [0.5, 0.5]
+            if constrained:
+                self.upper_bound = [0.5, 0.5]
+            else:
+                self.upper_bound = [0.5, 1.0]
             if polarization:
                 self.calib_parameters += ['threshold_pol']
-                self.lower_bound += [0.5]
+                if constrained:
+                    self.lower_bound += [0.5]
+                else:
+                    self.lower_bound += [0.0]
                 self.upper_bound += [1.0]
                 self.paired_variables = tuple([(1, 2)])
             if algorithmic:
@@ -94,7 +113,8 @@ class ODABMCalibrationProblem(FloatProblem):
         return self.is_valid(solution.variables)
 
     def is_valid(self, variables: list) -> bool:
-        if self.model == abm4problemod.model.ATBCRModel and self.polarization:
+        if (self.constrained and self.model == abm4problemod.model.ATBCRModel
+                and self.polarization):
             for i, j in self.paired_variables:
                 if abs(variables[i] - variables[j]) > 0.9 or abs(
                         variables[i] - variables[j]) < 0.1:
@@ -139,7 +159,8 @@ class ODABMCalibrationProblem(FloatProblem):
         parameters = self.decode_variables(values)
 
         results = mc_run(model_cls=self.model, parameters=parameters,
-                         mc=self.mc, number_processes=self.num_processes,
+                         mc=self.mc, synth=self.synth,
+                         number_processes=self.num_processes,
                          data_collection_period=1)
 
         return self.compute_all_fitness(results.raw_global_results)
@@ -156,9 +177,16 @@ class ODABMCalibrationProblem(FloatProblem):
                 [(self.measure_time[i], variables[factor + i]) for i in
                  range(factor)])
             if self.polarization:
-                parameters['threshold_pol'] = deque(
-                    [(self.measure_time[i], variables[factor * 2 + i]) for i in
-                     range(factor)])
+                if self.constrained:
+                    parameters['threshold_pol'] = deque(
+                        [(self.measure_time[i], variables[factor * 2 + i]) for
+                         i in
+                         range(factor)])
+                else:
+                    parameters['threshold_pol'] = deque(
+                        [(self.measure_time[i],
+                          variables[factor + i] + (1 - variables[factor + i]) *
+                          variables[factor * 2 + i]) for i in range(factor)])
             else:
                 parameters['threshold_pol'] = deque(
                     [(self.measure_time[i], 1.0) for i in range(factor)])
@@ -181,8 +209,9 @@ class ODABMCalibrationProblem(FloatProblem):
 
         fitness = np.zeros(self.mc)
         for i in range(self.mc):
-            output = results.loc[results['Seed'] == i]['Concern'].to_numpy()[
-                self.measure_time]
+            output = \
+                results.loc[results['Seed'] == i][self.statistic].to_numpy()[
+                    self.measure_time]
 
             fitness[i] = metric(self.history[is_valid], output[is_valid])
 

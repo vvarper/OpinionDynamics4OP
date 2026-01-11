@@ -27,7 +27,7 @@ class SimulationStatistics:
     def load_agents_results(self, sim_config):
 
         # 1. Get the file path
-        file = f'outputs/{sim_config["model_name"]}_{sim_config["concern_threshold"]:.2}'
+        file = f'outputs/{sim_config["model_name"]}_{sim_config["concern_threshold"]:.2}_{sim_config["num_agents"]}'
 
         if sim_config["model_name"] == 'ATBCRModel':
             file += (f'_{sim_config["threshold_bc"]:.2}_'
@@ -53,7 +53,8 @@ class SimulationStatistics:
 
         return agents_opinions
 
-    def plot_opinions(self, title, sim_config, filename="", alpha=0.1,
+    def plot_opinions(self, base_folder, title, sim_config, filename="",
+                      alpha=0.1,
                       measure_time=None, xlabels=None):
 
         agents_opinions = self.load_agents_results(sim_config)
@@ -102,8 +103,10 @@ class SimulationStatistics:
 
         if measure_time is not None:
             ax[0].set_xticks(measure_time)
-            xlabels = pd.read_csv('data/simulation_periods.csv')['Subperiod']
-            ax[0].set_xticklabels(xlabels, rotation=45)
+            xlabels = pd.read_csv(f'{base_folder}/simulation_periods.csv')[
+                'Subperiod']
+            months = len(measure_time)
+            ax[0].set_xticklabels(xlabels[:months], rotation=45)
 
         handles, labels = ax[0].get_legend_handles_labels()
 
@@ -142,7 +145,8 @@ class SimulationStatistics:
 
         plt.clf()
 
-    def plot_concern(self, months=None, measure_time=None, history=None,
+    def plot_concern(self, base_folder, months=None, measure_time=None,
+                     history=None,
                      filename="", title=None):
         concern = self.summary_results['Concern']['mean'].to_list()
 
@@ -151,9 +155,10 @@ class SimulationStatistics:
             if months is None:
                 months = len(measure_time)
             concern = [concern[i] for i in measure_time][:months + 1]
-            xlabels = pd.read_csv('data/simulation_periods.csv')['Subperiod']
+            xlabels = pd.read_csv(f'{base_folder}/simulation_periods.csv')[
+                'Subperiod']
             plt.xticks(range(0, len(history[:months + 1])),
-                       xlabels[:months + 1],
+                       xlabels[:months],
                        rotation=45)
 
             if history is not None:
@@ -179,7 +184,9 @@ class SimulationStatistics:
 
         plt.clf()
 
-    def plot_avg_opinion(self, months=None, measure_time=None, filename=""):
+    def plot_avg_opinion(self, base_folder, months=None, measure_time=None,
+                         history=None,
+                         filename="", title=None):
         avg_opinion = self.summary_results['AvgOpinion']['mean'].to_list()
         std_opinion = self.summary_results['StdOpinion']['mean'].to_list()
 
@@ -189,23 +196,33 @@ class SimulationStatistics:
                 months = len(measure_time)
             avg_opinion = [avg_opinion[i] for i in measure_time][:months + 1]
             std_opinion = [std_opinion[i] for i in measure_time][:months + 1]
-            xlabels = pd.read_csv('data/simulation_periods.csv')['Subperiod']
+            xlabels = pd.read_csv(f'{base_folder}/simulation_periods.csv')[
+                'Subperiod']
             plt.xticks(range(0, len(avg_opinion)),
                        xlabels[:months + 1],
                        rotation=45)
+
+            if history is not None:
+                plt.plot(history[:months + 1], color='blue', marker='.',
+                         label='History')
+        else:
+            plt.xlabel('Time step')
 
         # Plot range given by the standard deviation
         plt.fill_between(range(len(avg_opinion)),
                          np.array(avg_opinion) - np.array(std_opinion),
                          np.array(avg_opinion) + np.array(std_opinion),
-                         alpha=0.2)
+                         alpha=0.2, color='green', label='Std. Dev.')
 
-        plt.plot(avg_opinion, marker='.', label='Simulation')
+        plt.plot(avg_opinion, marker='.', label='Simulation', color='green')
 
         plt.ylabel('Average opinion')
         plt.gca().set_yticklabels(
             ['{:.2f}'.format(x) for x in plt.gca().get_yticks()])
         plt.legend()
+
+        if title is not None:
+            plt.title(title)
 
         if not filename == "":
             plt.savefig(filename, bbox_inches="tight")

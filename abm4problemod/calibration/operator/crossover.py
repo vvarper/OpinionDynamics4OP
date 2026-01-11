@@ -8,7 +8,8 @@ from jmetal.operator import DifferentialEvolutionCrossover
 
 class GeneralizedDifferentialEvolutionCrossover(
     DifferentialEvolutionCrossover):
-    def __init__(self, max_diff: float, min_diff: float, comparing_idx: tuple,
+    def __init__(self, max_diff: float = None, min_diff: float = None,
+                 comparing_idx: tuple = None,
                  CR: float = None, F: float = None, crossover: str = "rand",
                  shade_clip: bool = False,
                  generator: np.random.Generator = np.random.default_rng()):

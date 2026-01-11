@@ -39,12 +39,12 @@ def load_opinions(filename, concern_threshold):
     return opinions
 
 
-def load_history(filename):
-    return pd.read_csv(filename)[['concerned']].to_numpy().flatten()
+def load_history(filename, variable='concerned'):
+    return pd.read_csv(filename)[[variable]].to_numpy().flatten()
 
 
-def get_period_change_steps(daily_steps):
-    days_per_period = pd.read_csv('data/simulation_periods.csv')['Days']
+def get_period_change_steps(daily_steps, folder='mig'):
+    days_per_period = pd.read_csv(f'data/{folder}/simulation_periods.csv')['Days']
     days_per_period = days_per_period[days_per_period != 0]
 
     steps_per_month = [i * daily_steps for i in days_per_period]

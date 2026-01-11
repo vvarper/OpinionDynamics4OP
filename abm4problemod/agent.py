@@ -12,7 +12,7 @@ class BaseODAgent(mesa.Agent):
         elif old_opinion >= self.model.concern_threshold > self.opinion:
             self.model.num_concerned -= 1
 
-    def update_opinions_stats(self, old_opinion):
+    def update_opinion_stats(self, old_opinion):
         diff_opinion = self.opinion - old_opinion
         self.model.sum_opinions += diff_opinion
         self.model.sum_opinions_sq += (
@@ -32,10 +32,13 @@ class ATBCRAgent(BaseODAgent):
 
         self.opinion = max(self.model.min_opinion,
                            min(self.opinion, self.model.max_opinion))
-        self.register_concern_change(old_opinion)
 
-        if self.model.collector_mode in ('opinions', 'avg_opinions'):
-            self.update_opinions_stats(old_opinion)
+        if self.model.collector_statistic == 'concern':
+            self.register_concern_change(old_opinion)
+        elif self.model.collector_statistic == 'avg_opinions':
+            self.model.sum_opinions += (self.opinion - old_opinion)
+        elif self.model.collector_statistic == 'avgstd_opinions':
+            self.update_opinion_stats(old_opinion)
 
 
 class FJAgent(BaseODAgent):
@@ -56,11 +59,12 @@ class FJAgent(BaseODAgent):
         self.opinion = susceptibility * new_opinion + (
                 1 - susceptibility) * self.initial_opinion
 
-        self.register_concern_change(old_opinion)
-
-        if self.opinion != old_opinion and self.model.collector_mode in (
-                'opinions', 'avg_opinions'):
-            self.update_opinions_stats(old_opinion)
+        if self.model.collector_statistic == 'concern':
+            self.register_concern_change(old_opinion)
+        elif self.model.collector_statistic == 'avg_opinions':
+            self.model.sum_opinions += (self.opinion - old_opinion)
+        elif self.model.collector_statistic == 'avgstd_opinions':
+            self.update_opinion_stats(old_opinion)
 
 
 class BiasedAssimilationAgent(BaseODAgent):
@@ -84,8 +88,9 @@ class BiasedAssimilationAgent(BaseODAgent):
 
         self.opinion = (old_opinion + neighbors_sum_biased) / denominator
 
-        self.register_concern_change(old_opinion)
-
-        if self.opinion != old_opinion and self.model.collector_mode in (
-                'opinions', 'avg_opinions'):
-            self.update_opinions_stats(old_opinion)
+        if self.model.collector_statistic == 'concern':
+            self.register_concern_change(old_opinion)
+        elif self.model.collector_statistic == 'avg_opinions':
+            self.model.sum_opinions += (self.opinion - old_opinion)
+        elif self.model.collector_statistic == 'avgstd_opinions':
+            self.update_opinion_stats(old_opinion)
