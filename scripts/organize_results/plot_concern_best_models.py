@@ -13,8 +13,9 @@ def plot_concern_model(folder_name, label, measure_time, color):
         results = results.drop(columns='Seed').groupby(['Step']).agg(
             ['mean', 'std', 'min', 'max']).reset_index()
 
-        results = pd.DataFrame(results).sort_values(by=['Step']).reset_index(
-            drop=True)['Concern']
+        results = \
+        pd.DataFrame(results).sort_values(by=['Step']).reset_index(drop=True)[
+            'Concern']
 
         mean_concern = results['mean'].to_list()
         std_concern = results['std'].to_list()
@@ -45,8 +46,7 @@ def main():
     configs = {0.6: {'bc': 'DE', 'atbcr': 'L-SHADE', 'fj': 'DE', 'ab': 'PSO',
                      'ba': 'L-SHADE'},
                0.75: {'bc': 'DE', 'atbcr': 'L-SHADE', 'fj': 'DE', 'ab': 'DE',
-                      'ba': 'L-SHADE'
-                      },
+                      'ba': 'L-SHADE'},
                0.9: {'bc': 'DE', 'atbcr': 'DE', 'fj': 'DE', 'ab': 'L-SHADE',
                      'ba': 'L-SHADE'}}
 
@@ -55,7 +55,8 @@ def main():
     history = load_history(f'data/{topic}/{topic}_history.csv')
 
     for concern_threshold in configs.keys():
-        xlabels = pd.read_csv(f'data/{topic}/simulation_periods.csv')['Subperiod']
+        xlabels = pd.read_csv(f'data/{topic}/simulation_periods.csv')[
+            'Subperiod']
         plt.xticks(range(0, len(history)), xlabels, rotation=45)
         plt.plot(history, marker='.', label='History')
         plt.ylabel(f'Proportion of population concerned')
@@ -67,7 +68,6 @@ def main():
         degroot_folder_name = f'results/DeGroot/{daily_factor}_{concern_threshold}_{mc}'
         plot_concern_model(degroot_folder_name, 'DeGroot solution',
                            measure_time, palette[1])
-
 
         for j, local_od in enumerate(configs[concern_threshold]):
             algorithm = configs[concern_threshold][local_od]
@@ -89,7 +89,12 @@ def main():
 
         plt.title(f"Concern threshold = {concern_threshold}")
 
-        plt.legend()
+        if concern_threshold == 0.75:
+            plt.ylabel('')
+        if concern_threshold == 0.9:
+            plt.legend()
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+
         plt.savefig(
             f"results/summary_calibration_results/best_{concern_threshold}.pdf",
             bbox_inches="tight")

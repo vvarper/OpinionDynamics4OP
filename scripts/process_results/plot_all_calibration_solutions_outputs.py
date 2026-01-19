@@ -132,7 +132,7 @@ def main():
                   'LSHADE': 'LSHADE-6-True-True',
                   'PSO': 'PSO-1.49618-1.49618-0.7298'}
     daily_factors = [45, 225, 450]
-    concern_thresholds = [0.6, 0.75, 0.9]
+    concern_thresholds = [0.9]
     max_ev = 30000
     pop_size = 100
     mc = 20

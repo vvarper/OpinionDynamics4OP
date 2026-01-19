@@ -51,10 +51,8 @@ def plot_opinions(folder_name, target, daily_factor, local_od, mc,
         # Create problem instance #####################################
 
         problem = ODABMCalibrationProblem(model, fixed_parameters, history,
-                                          measure_time, metrics, mc,
-                                          True,
-                                          'Concern',
-                                          synth=True,
+                                          measure_time, metrics, mc, True,
+                                          'Concern', synth=True,
                                           num_processes=mc,
                                           generator=np.random.default_rng(
                                               seed=17),
@@ -86,8 +84,7 @@ def plot_opinions(folder_name, target, daily_factor, local_od, mc,
 
         sim_config = {'model_name': model.__name__,
                       'concern_threshold': concern_threshold,
-                      'num_agents': num_agents,
-                      'mc': -1}
+                      'num_agents': num_agents, 'mc': -1}
 
         if local_od in ['bc', 'atbcr', 'ab']:
             sim_config['threshold_bc'] = parameters['threshold_bc'][0][1]
@@ -109,8 +106,7 @@ def plot_opinions(folder_name, target, daily_factor, local_od, mc,
                      f'\n{local_od.upper()} (Series {target})')
 
         results.plot_opinions(base_folder="data/synth", sim_config=sim_config,
-                              measure_time=measure_time,
-                              title=title,
+                              measure_time=measure_time, title=title,
                               filename=f'{folder_name}/best_solution_opinions.png')
 
 
@@ -135,14 +131,14 @@ def main():
     mc = 20
     target_series = ['stable', 'sin1', 'sin1noise']
 
-    for concern_threshold, target in itertools.product(
-            concern_thresholds, target_series):
+    for concern_threshold, target in itertools.product(concern_thresholds,
+            target_series):
 
         degroot_folder = f'results/synth/{target}_history/Concern{concern_threshold}/degroot_{daily_factor}_{mc}'
 
         if os.path.exists(degroot_folder):
-            plot_opinions(degroot_folder, target, daily_factor,
-                          'DeGroot', mc, concern_threshold, False)
+            plot_opinions(degroot_folder, target, daily_factor, 'DeGroot', mc,
+                          concern_threshold, False)
 
         for local_od in local_ods.keys():
             folder_name = f'results/synth/{target}_history/Concern{concern_threshold}'
@@ -152,8 +148,7 @@ def main():
                 folder_name += f'/cons_{local_od}_{daily_factor}_{mc}_{max_ev}_{pop_size}'
 
             if os.path.exists(folder_name + '/calibration_info.json'):
-                plot_opinions(folder_name, target, daily_factor,
-                              local_od, mc,
+                plot_opinions(folder_name, target, daily_factor, local_od, mc,
                               concern_threshold,
                               constrained=not args.unconstrained)
 

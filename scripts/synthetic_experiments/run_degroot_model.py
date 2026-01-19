@@ -29,8 +29,7 @@ def check_positive(value):
 
 def main():
     # Read arguments from command line ########################################
-    parser = argparse.ArgumentParser(
-        description="Run DeGroot model:\n",
+    parser = argparse.ArgumentParser(description="Run DeGroot model:\n",
         formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("daily_steps", type=check_positive,
@@ -45,7 +44,7 @@ def main():
     args = parser.parse_args()
     target_series = args.target_series
 
-    output_dir = f'results/synth/{target_series}/Concern{args.concern_threshold}/degroot_{args.daily_steps}_{args.mc}'
+    output_dir = f'results/synth/{target_series}/Concern{args.concern_threshold}/degroot_{args.daily_steps}_{args.mc}/'
     os.makedirs(os.path.dirname(output_dir), exist_ok=True)
 
     # Load history and social network data ####################################
@@ -72,8 +71,7 @@ def main():
     # Create problem instance #################################################
     problem = ODABMCalibrationProblem(model, fixed_parameters, history,
                                       measure_time, metrics, args.mc,
-                                      'Concern',
-                                      num_processes=args.mc,
+                                      'Concern', num_processes=args.mc,
                                       generator=np.random.default_rng(seed=0),
                                       polarization=False, algorithmic=False,
                                       synth=True)
@@ -100,8 +98,7 @@ def main():
     calibration_info = {'mc': args.mc, 'daily_steps': args.daily_steps,
                         'target_series': target_series,
                         'concern_threshold': args.concern_threshold,
-                        'local_od': 'fj',
-                        'MAE': best_solution['mae'].item(),
+                        'local_od': 'fj', 'MAE': best_solution['mae'].item(),
                         'MSE': best_solution['mse'].item(),
                         'MAPE': best_solution['mape'].item(),
                         'R2': best_solution['r2'].item(),
